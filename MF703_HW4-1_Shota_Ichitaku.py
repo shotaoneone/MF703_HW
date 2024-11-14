@@ -1,49 +1,41 @@
+import numpy as np
+from scipy.linalg import inv, pinv
 
-# Define sample parameters
-np.random.seed(42)  # For reproducibility
-n_assets = 5  # Number of assets
-n_constraints = 3  # Number of constraints
+# Example parameters
+N = 50  # Total number of securities
+a = 1  # Risk aversion parameter
 
-# Simulated data
-R = np.random.rand(n_assets)  # Expected returns vector
-C = np.random.rand(n_assets, n_assets)  # Covariance matrix
-C = (C + C.T) / 2  # Make covariance matrix symmetric
-w = np.random.rand(n_assets)  # Portfolio weights vector
-G = np.random.rand(n_constraints, n_assets)  # Constraints matrix
-c = np.random.rand(n_constraints)  # Constraint values vector
-a = 0.5  # Risk aversion coefficient
-λ = np.random.rand(n_constraints)  # Lagrange multipliers vector
+# Simulate random expected returns
+np.random.seed(42)
+R = np.random.rand(N) * 0.1  # Example expected returns
 
-# Calculate gradient with respect to w (∇wL)
-grad_w = R - 2 * a * np.dot(C, w) - np.dot(G.T, λ)
+# Simulate a random positive definite covariance matrix
+A = np.random.rand(N, N)
+C = np.dot(A, A.T)
 
-# Calculate gradient with respect to λ (∇λL)
-grad_lambda = np.dot(G, w) - c
+# Constructing G
+G = np.zeros((2, N))
+G[0, :] = 1  # Budget constraint
+G[1, :17] = 0.1  # Sector allocation constraint
 
-# Print results
-print("Gradient with respect to w (∇wL):")
-print(grad_w)
+# Constructing c vector for constraints
+c = np.array([1, 0.1])  # Target values for the constraints
 
-print("\nGradient with respect to λ (∇λL):")
-print(grad_lambda)
+# Calculate G C^{-1} G^T
+C_inv = inv(C)
+G_C_inv_G_T = np.dot(G, np.dot(C_inv, G.T))
 
+# Solve for lambda using a stable method
+lambda_vec = np.dot(pinv(G_C_inv_G_T), (np.dot(G, np.dot(C_inv, R)) - 2 * a * c))
 
-# Solve for λ
-GC_inv = np.dot(G, np.linalg.inv(C))
-GC_inv_GT = np.dot(GC_inv, G.T)
-GC_inv_R = np.dot(GC_inv, R)
-
-lambda_values = np.linalg.solve(GC_inv_GT, GC_inv_R - 2 * a * c)
-
-# Solve for w
-w = (1 / (2 * a)) * np.dot(np.linalg.inv(C), (R - np.dot(G.T, lambda_values)))
+# Calculate portfolio weights w
+w = (1 / (2 * a)) * np.dot(C_inv, (R - np.dot(G.T, lambda_vec)))
 
 # Display results
-print("Lagrange multipliers (λ):")
-print(lambda_values)
-
-print("\nOptimal portfolio weights (w):")
+print("Portfolio Weights:")
 print(w)
 
-
-
+# Analysis of the portfolio
+print("\nAnalysis:")
+print(f"Total Weight (should be 1): {np.sum(w)}")
+print(f"Sector Allocation (first 17 securities): {np.sum(w[:17])}")
